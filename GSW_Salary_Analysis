@@ -1,0 +1,102 @@
+c('rvest','dplyr','pipeR', 'knitr') -> packages # you don't need knitr but I do to make this post
+lapply(packages, library, character.only = T) #loops through the packages and loads them
+
+library(ggplot2)
+library(vcd)
+library(scales)
+
+
+#######Enter Team Abbreviation Below
+
+url<-'http://www.basketball-reference.com/teams/GSW/2015.html'
+css_page<-'#salaries' 
+url %>>%
+  html %>>%
+  html_nodes(css_page) %>>%
+  html_table(header = T) %>>%
+  data.frame() %>>%
+  tbl_df() -> total_table
+
+
+
+
+total_table$Salary2<-gsub(",","",total_table$Salary)
+total_table$Salary2<-gsub("$","",total_table$Salary2)
+
+total_table$Salary2<-substring(total_table$Salary2, 2, 50)
+
+
+total_table$Salary2<-as.numeric(total_table$Salary2)
+total_table<- total_table[order(total_table$Salary2),]
+
+
+total_table$Player<-as.factor(total_table$Player)
+
+
+
+#######################Dataset 2#############################
+
+
+url<-'http://www.basketball-reference.com/teams/GSW/2015.html'
+css_page<-'#totals' 
+url %>>%
+  html %>>%
+  html_nodes(css_page) %>>%
+  html_table(header = T) %>>%
+  data.frame() %>>%
+  tbl_df() -> total_s
+
+
+
+####################Merged Dataset 3###########
+
+total <- merge(total_table,total_s,by="Player")
+##############################################
+
+
+
+##################Calculate points per game
+total     <-    
+  mutate(total,
+         Points_Per_Game = PTS / G)
+
+############################################
+
+total2 <-filter(total, Points_Per_Game > 5)
+
+
+
+#Chart
+ggplot(total2, aes(x=Salary2, y=reorder(Player,Salary2))) +
+  geom_point(size=4)+
+  theme(axis.line = element_line(colour="black",size=1))+
+  scale_x_continuous(name="2014-2015 Salary",labels = comma)+
+  scale_y_discrete(name="Player Name")
+  
+
+
+
+
+####PTS/G and Salary
+ggplot(total2,aes(x=Salary2, y=Points_Per_Game, colour= Age))+geom_point()+
+  geom_point(size=.00 )+
+  ggtitle("Salary Compared with PTS/G")+
+  ylab("Pts/G")+
+  xlab("Salary")+
+  scale_x_continuous(name="2014-2015 Salary", labels=comma)+
+  theme(axis.line = element_line(colour="black",size=1))+
+  geom_text(label=total2$Player)
+
+
+
+
+####  Minute and Salary
+ggplot(total2,aes(x=MP, y=Salary2))+geom_point()+
+  geom_point(size=.00 )+
+  ggtitle("Salary Compared with Minutes Played in 2014-2015")+
+  ylab("Minutes Played")+
+  xlab("Salary")+
+  scale_y_continuous(name="2014-2015 Salary", labels=comma)+
+  scale_x_continuous(name="Minutes Played", labels=comma)+
+  theme(axis.line = element_line(colour="black",size=1))+
+  geom_text(label=total2$Player)
